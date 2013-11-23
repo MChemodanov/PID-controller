@@ -45,37 +45,34 @@ Robot robot;
 
 void InitRobot(Robot*r)
 {
-	r->depth         = 30;
-	r->mass          = 1;
+	r->depth         = 20;
+	r->mass          = 10;
 	r->speed         = 0;
-	r->dragCoeff     = 0.1;
+	r->dragCoeff     = 2;
 	r->force         = 0;
-	r->floatingForce = 1;
-	r->desired_depth  = 20;
+	r->floatingForce = -1;
+	r->desired_depth  = 10;
 }
 
-float P_regulate(float current_depth, float desired_depth)
+float P_regulate(Robot*r)
 {
-	float diff = current_depth - desired_depth;
+	float diff = r->depth - r->desired_depth;
 	float max_force = 20;
-	float border_diff = 1;
-	if (abs(diff) > border_diff)
-		return max_force*(diff<0 ? 1 : -1);
-	else
-		return max_force * diff / border_diff;
+
+	return -1*max_force * diff * P_COEFF;
 }
 
 
 float DragForce(Robot r)
 {
-	return r.speed * abs(r.speed) * r.dragCoeff;
+	return -1*r.speed * r.dragCoeff;
 }
 
 float CalculateStep()
 {
 	float accel = 0;
 
-	float forceSum = - robot.floatingForce - DragForce(robot) + P_COEFF*P_regulate(robot.depth, robot.desired_depth);
+	float forceSum = robot.floatingForce + DragForce(robot) + P_regulate(&robot);
 	accel = forceSum / robot.mass;
 	robot.speed += accel * step;
 	robot.depth += robot.speed * step;
@@ -89,6 +86,11 @@ float CalculateStep()
 
 int main(int args, char ** params)
 {
+	if (args < 2)
+	{
+		printf("Need 1 param: p_coeff");
+		return 0;
+	}
 	sscanf(params[1], "%f", &P_COEFF);
 	InitRobot(&robot);
 	int steps = (int)(imitationEnd/step);
