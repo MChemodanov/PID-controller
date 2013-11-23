@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <conio.h>
 #include <math.h>
 #include <stdio.h>
@@ -8,6 +9,8 @@ float t = 0;
 float imitationEnd = 100;
 
 float P_COEFF = 0;
+float I_COEFF = 0;
+
 
 void PrintSignal(float *signal, int size)
 {
@@ -52,6 +55,7 @@ void InitRobot(Robot*r)
 	r->force         = 0;
 	r->floatingForce = -1;
 	r->desired_depth  = 10;
+	memset(r->buffer,0,I_BUFFER_SIZE*sizeof(float));
 }
 
 float P_regulate(Robot*r)
@@ -62,6 +66,22 @@ float P_regulate(Robot*r)
 	return -1*max_force * diff * P_COEFF;
 }
 
+float BufferSum(float * buffer, int size)
+{
+	float result = 0;
+	for (int i =0; i< size; i++)
+		result += buffer[i];
+	return result;
+}
+
+float I_regulate(Robot*r)
+{
+	static float integrated = 0;
+	static int iCounter = 0;
+	integrated  += r->desired_depth - r->depth;
+
+	return integrated*I_COEFF;
+}
 
 float DragForce(Robot r)
 {
@@ -72,7 +92,7 @@ float CalculateStep()
 {
 	float accel = 0;
 
-	float forceSum = robot.floatingForce + DragForce(robot) + P_regulate(&robot);
+	float forceSum = robot.floatingForce + DragForce(robot) + P_regulate(&robot)+I_regulate(&robot);;
 	accel = forceSum / robot.mass;
 	robot.speed += accel * step;
 	robot.depth += robot.speed * step;
@@ -86,12 +106,13 @@ float CalculateStep()
 
 int main(int args, char ** params)
 {
-	if (args < 2)
+	if (args < 3)
 	{
-		printf("Need 1 param: p_coeff");
+		printf("Need 2 params, p_coeff and i_coeff");
 		return 0;
 	}
 	sscanf(params[1], "%f", &P_COEFF);
+	sscanf(params[2], "%f", &I_COEFF);
 	InitRobot(&robot);
 	int steps = (int)(imitationEnd/step);
 	float * vesult = (float*)malloc(steps*sizeof(float));
